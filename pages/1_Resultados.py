@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 
+# Estilo visual
 st.markdown(
     """
     <style>
@@ -39,7 +40,7 @@ st.markdown(
 
     .metric-value {
         color: #17643e;
-        font-size: 1.45rem;
+        font-size: 1.35rem;
         font-weight: 700;
         margin-top: 8px;
     }
@@ -55,8 +56,11 @@ st.markdown(
 )
 
 st.title("Comparación de modelos")
-st.caption("Revisa el desempeño y el tiempo de ejecución de los modelos evaluados.")
+st.caption(
+    "Revisa las métricas y los tiempos de ejecución de los modelos evaluados."
+)
 
+# Leer el archivo de métricas
 ruta = (
     Path(__file__).resolve().parents[1]
     / "artifacts"
@@ -64,7 +68,7 @@ ruta = (
 )
 
 if not ruta.exists():
-    st.error(f"No se encontró el archivo de métricas: {ruta.name}")
+    st.error("No se encontró el archivo artifacts/metricas_modelos.csv.")
     st.stop()
 
 metricas = pd.read_csv(ruta)
@@ -89,10 +93,15 @@ with col1:
 
 if "f1_macro" in metricas.columns:
     f1 = pd.to_numeric(metricas["f1_macro"], errors="coerce")
+
     if f1.notna().any():
         indice_mejor = f1.idxmax()
-        mejor_modelo = metricas.loc[indice_mejor, "modelo"]
         mejor_f1 = f1.loc[indice_mejor]
+
+        if "modelo" in metricas.columns:
+            mejor_modelo = metricas.loc[indice_mejor, "modelo"]
+        else:
+            mejor_modelo = "No disponible"
 
         with col2:
             st.markdown(
@@ -121,7 +130,7 @@ st.subheader("Métricas por modelo")
 with st.container(border=True):
     metricas_mostrar = metricas.copy()
 
-    porcentajes = [
+    columnas_porcentaje = [
         columna
         for columna in [
             "accuracy",
@@ -133,22 +142,25 @@ with st.container(border=True):
         if columna in metricas_mostrar.columns
     ]
 
-    tiempos = [
+    columnas_tiempo = [
         columna
         for columna in ["entrenamiento_s", "prediccion_s"]
         if columna in metricas_mostrar.columns
     ]
 
-    formatos = {columna: "{:.1%}" for columna in porcentajes}
-    formatos.update({columna: "{:.2f} s" for columna in tiempos})
+    formatos = {
+        columna: "{:.1%}"
+        for columna in columnas_porcentaje
+    }
+    formatos.update({
+        columna: "{:.2f} s"
+        for columna in columnas_tiempo
+    })
 
-    estilo = metricas_mostrar.style.format(formatos, na_rep="—")
-
-    if "f1_macro" in metricas_mostrar.columns:
-        estilo = estilo.background_gradient(
-            cmap="Greens",
-            subset=["f1_macro"],
-        )
+    estilo = metricas_mostrar.style.format(
+        formatos,
+        na_rep="—",
+    )
 
     st.dataframe(
         estilo,
@@ -156,22 +168,22 @@ with st.container(border=True):
         hide_index=True,
     )
 
-if "f1_macro" in metricas.columns and "modelo" in metricas.columns:
+# Gráfico de F1-macro
+if "modelo" in metricas.columns and "f1_macro" in metricas.columns:
     st.subheader("F1-macro por modelo")
     st.caption(
-        "Un valor más alto indica un mejor equilibrio entre precisión "
-        "y cobertura de las clases."
+        "Un valor más alto indica un mejor equilibrio entre las clases."
     )
 
-    with st.container(border=True):
-        grafico = metricas[["modelo", "f1_macro"]].copy()
-        grafico["f1_macro"] = pd.to_numeric(
-            grafico["f1_macro"],
-            errors="coerce",
-        )
-        grafico = grafico.dropna(subset=["f1_macro"])
-        grafico = grafico.sort_values("f1_macro")
+    grafico = metricas[["modelo", "f1_macro"]].copy()
+    grafico["f1_macro"] = pd.to_numeric(
+        grafico["f1_macro"],
+        errors="coerce",
+    )
+    grafico = grafico.dropna(subset=["f1_macro"])
+    grafico = grafico.sort_values("f1_macro")
 
+    with st.container(border=True):
         st.bar_chart(
             grafico.set_index("modelo"),
             color="#21804d",
